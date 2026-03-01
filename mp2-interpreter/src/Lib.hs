@@ -1,4 +1,5 @@
 module Lib where
+import Data.Maybe
 import Data.HashMap.Strict as H (HashMap, empty, fromList, insert, lookup, union)
 
 
@@ -88,10 +89,12 @@ liftIntOp op (IntVal x) (IntVal y) = IntVal $ op x y
 liftIntOp _ _ _ = ExnVal "Cannot lift"
 
 liftBoolOp :: (Bool -> Bool -> Bool) -> Val -> Val -> Val
-liftBoolOp = undefined
+liftBoolOp op (BoolVal x) (BoolVal y) = BoolVal $ op x y
+liftBoolOp _ _ _ = ExnVal "Cannot lift"
 
 liftCompOp :: (Int -> Int -> Bool) -> Val -> Val -> Val
-liftCompOp = undefined
+liftCompOp op (IntVal x) (IntVal y) = BoolVal $ op x y
+liftCompOp _ _ _ = ExnVal "Cannot lift"
 
 --- Eval
 --- ----
@@ -100,13 +103,14 @@ eval :: Exp -> Env -> Val
 
 --- ### Constants
 
-eval (IntExp i)  _ = undefined
-eval (BoolExp i) _ = undefined
+eval (IntExp i)  _ = IntVal i
+eval (BoolExp i) _ = BoolVal i
 
 --- ### Variables
 
-eval (VarExp s) env = undefined
-
+eval (VarExp s) env =
+    let val = H.lookup s env in
+        fromMaybe (ExnVal "exn: No match in env") val
 --- ### Arithmetic
 
 eval (IntOpExp op e1 e2) env = undefined
