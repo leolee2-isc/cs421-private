@@ -124,7 +124,7 @@ eval (CompOpExp op e1 e2) env = liftCompOp (fromJust $ H.lookup op compOps) (eva
 
 --- ### If Expressions
 
-eval (IfExp e1 e2 e3) env = 
+eval (IfExp e1 e2 e3) env =
     case eval e1 env of
         BoolVal True  -> eval e2 env
         BoolVal False -> eval e3 env
@@ -132,9 +132,14 @@ eval (IfExp e1 e2 e3) env =
 
 --- ### Functions and Function Application
 
-eval (FunExp params body) env = undefined
+eval (FunExp params body) env = CloVal params body env
 
-eval (AppExp e1 args) env = undefined
+eval (AppExp e1 args) env =
+    case eval e1 env of
+        CloVal params body env_local ->
+            let env2 = H.union (H.fromList (zip params (map (\x -> eval x env) args))) env_local
+            in eval body env2
+        _ -> ExnVal "Apply to non-closure"
 
 --- ### Let Expressions
 
