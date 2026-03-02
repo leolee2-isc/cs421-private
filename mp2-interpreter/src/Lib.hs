@@ -136,14 +136,16 @@ eval (FunExp params body) env = CloVal params body env
 
 eval (AppExp e1 args) env =
     case eval e1 env of
-        CloVal params body env_local ->
-            let env2 = H.union (H.fromList (zip params (map (\x -> eval x env) args))) env_local
-            in eval body env2
+        CloVal params body env_global ->
+            let env_args = H.fromList (zip params (map (\x -> eval x env) args))
+            in eval body (H.union env_args env_global)
         _ -> ExnVal "Apply to non-closure"
 
 --- ### Let Expressions
 
-eval (LetExp pairs body) env = undefined
+eval (LetExp pairs body) env = 
+    let env_args = H.fromList (map (\p -> (fst p, eval (snd p) env)) pairs)
+    in eval body (H.union env_args env)
 
 --- Statements
 --- ----------
@@ -157,18 +159,32 @@ exec (PrintStmt e) penv env = (val, penv, env)
 
 --- ### Set Statements
 
-exec (SetStmt var e) penv env = undefined
+exec (SetStmt var e) penv env = ("", penv, H.insert var (eval e env) env)
 
 --- ### Sequencing
 
-exec (SeqStmt []) penv env = undefined
+exec (SeqStmt []) penv env = ("", penv, env)
+exec (SeqStmt (x:xs)) penv env =
+    let (str, penv2, env2) = exec x penv env
+    in let (str2, penv3, env3) = exec (SeqStmt xs) penv2 env2
+    in (str ++ str2, penv3, env3)
 
 --- ### If Statements
 
-exec (IfStmt e1 s1 s2) penv env = undefined
+exec (IfStmt e1 s1 s2) penv env =
+    case eval e1 env of
+        BoolVal True  -> exec s1 penv env
+        BoolVal False -> exec s2 penv env
+        _             -> ("exn: Condition is not a Bool", penv, env)
 
 --- ### Procedure and Call Statements
 
-exec p@(ProcedureStmt name args body) penv env = undefined
+exec p@(ProcedureStmt name args body) penv env = ("", H.insert name p penv, env)
 
-exec (CallStmt name args) penv env = undefined
+exec (CallStmt name args) penv env = 
+    let s = H.lookup name penv
+    in if isNothing s then ("Procedure " ++ name ++ " undefined", penv, env)
+    else let ProcedureStmt _ argnames body = fromJust s
+    in let env_args = H.fromList $ zip argnames (map (\x -> eval x env) args)
+    in exec body penv (H.union env_args env)
+
