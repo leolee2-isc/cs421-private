@@ -28,6 +28,11 @@ repl env = do
       case runExcept $ runStateT (eval expr) env of   -- Eval
         Left err -> print err
         -- TODO:
+        Right (Void, env) -> repl env
+        Right (val, env)  ->
+          do
+            print val
+            repl env
         -- Insert line here: If return value is void,
         --                    loop with new env without printing
         -- Insert line here: Otherwise, print and loop with new env
